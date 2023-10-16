@@ -5,7 +5,6 @@ hyperexps/*
 */.ipynb_checkpoints/*
 notebooks/
 **/*.pyc
-/runs/
 /tools/
 .idea/
 /chkpts/
