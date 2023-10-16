@@ -1,0 +1,11 @@
+__pycache__
+results/
+options/dev/
+hyperexps/*
+*/.ipynb_checkpoints/*
+notebooks/
+**/*.pyc
+/runs/
+/tools/
+.idea/
+/chkpts/

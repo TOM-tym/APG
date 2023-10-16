@@ -1,0 +1,40 @@
+dataset: imagenet100
+
+model: continual_trans
+backbones: SelfPromptDeit_mytiny
+immediate_layer: 9
+batch_size: 128
+
+convnet: resnet18
+teacher_path: /data/yuming220/continual_transformer/incremental_learning.pytorch/chkpt/resnet18/net_0_task_0.pth
+convnet_config:
+  nf: 64
+cnn_classifier_config:
+    type: cosine
+    scaling: 3.0
+    proxy_per_class: 10
+    distance: neg_stable_cosine_distance
+
+fc_proxy_per_class: 10
+eval_type: cnn
+memory_size: 0
+groupwise_factors:
+    old_weights: 0.
+
+pretrain_config:
+    lr_config:
+        epochs: 450
+        lr: 1.0e-3
+        lr_noise_pct: 0.67
+        lr_noise_std: 1
+        sched: cosine
+        warmup_lr: 1.0e-6
+        warmup_epochs: 10
+        min_lr: 5.0e-5
+        weight_decay: 0.05
+        momentum: 0.9
+        opt: adamw
+        cooldown_epochs: 10
+        patience_epochs: 10
+
+dump_predictions: True

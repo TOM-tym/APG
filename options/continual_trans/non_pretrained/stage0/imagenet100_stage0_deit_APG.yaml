@@ -1,0 +1,84 @@
+dataset: imagenet100
+
+model: continual_trans
+backbones: SelfPromptDeit_mytiny
+immediate_layer: 9
+frozen_layer: 9
+reset_deep_layers: True
+force_reset_deep_layers: False
+testing_interval: 10
+batch_size: 256
+
+eval_type: cnn
+memory_size: 0
+FC_MLP: False
+FC_MLP_num: 0
+fc_proxy_per_class: 10
+cross_attn_wo_x: True
+APG_residual: False
+
+groupwise_factors:
+    old_weights: 0.
+
+
+prompt_config:
+    self_prompt: True
+    prompt_difference: False
+    frozen_old_prompt: True
+    center_constraint: True
+    constraint_loss_type: l1
+    train_MLP_epochs: 100
+    train_first_token_epochs: 50
+    distill: False
+
+    lr_config:
+        epochs: 100
+        epochs_stage0: 100
+        lr: 1.0e-3
+        lr_cls: 1.0e-3
+        deep_layer_lr: 1.0e-3
+        APG_wd: 0.05
+        lr_noise_pct: 0.67
+        lr_noise_std: 1
+        sched: cosine
+        warmup_lr: 1.0e-4
+        warmup_epochs: 5
+        min_lr: 5.0e-4
+        weight_decay: 0.05
+        momentum: 0.9
+        opt: adamw
+        cooldown_epochs: 5
+        patience_epochs: 5
+        p_attn: True
+
+    finetune_config:
+        finetune_task: [ 0,1,2,3,4,5,6,7,8,9,10]
+        scale_finetune_epochs: True
+        scale_finetune_epochs_per_time: 5
+        finetune_whole_fc: True
+        p_attn: False
+        lr_config:
+            epochs: 20
+            lr: 1.0e-3
+            lr_cls: 1.0e-3
+            lr_noise_pct: 0.67
+            lr_noise_std: 1
+            sched: cosine
+            warmup_lr: 1.0e-5
+            warmup_epochs: 5
+            min_lr: 1.0e-4
+            weight_decay: 0.05
+            momentum: 0.9
+            opt: adamw
+            cooldown_epochs: 5
+            patience_epochs: 5
+
+parameter_dict:
+    cross_entropy_mem: 1
+    loss_norm: 0.01
+    loss_norm_scale: 100
+    attn_type: hard_ce
+finetune_parameter_dict:
+    cross_entropy: 1
+
+dump_predictions: True
