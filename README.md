@@ -129,7 +129,7 @@ In order to compare our method with other prompt-based methods, we also conduct 
 ## Notes
 
 - This is a project for over one year and it is maintained by myself alone, and I am trying my best to clean up the codes. 
-So please understand and forgive me for the delay in releasing the code. (If you find and bugs, please let me know :D)
+So please understand and forgive me for the delay in releasing the code. (If you find any bugs, please let me know :D)
 - At the moment, the codes for non-pretrained incremental learning is not released yet. However, if you're in hurry to
   reimplement this part, you can replace the pretrianed weight and use the incremental config like
   `options/continual_trans/non_pretrained/imagenet_sub/imagenet100_nonPretrained_incremental.yaml` (the hyper-parameters
