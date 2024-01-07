@@ -59,12 +59,16 @@ datasets
 │   │ val_100.txt 
 │
 │──cifar-100-python
+│   │ ...
 │ 
 │──my-imagenet-r 
+│   │ ...
 │ 
 │──my-EuroSAT_RGB
+│   │ ...
 │ 
 │──my-NWPU-RESISC45
+│   │ ...
 └
 ```
 
