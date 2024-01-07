@@ -9,7 +9,7 @@ from torchvision import transforms
 
 from .datasets import (
     APY, CUB200, LAD, AwA2, ImageNet100, ImageNet100UCIR, ImageNet1000, TinyImageNet200, iCIFAR10, ImageNetR,
-    iCIFAR100
+    EuroSAT_RGB, NWPU_RESISC45, iCIFAR100
 )
 import inclearn.lib.utils as utils
 from inclearn.lib.data.samplers import RASampler
@@ -76,7 +76,7 @@ class IncrementalDataset:
             initial_increment=initial_increment,
             data_path=data_path
         )
-
+        self.dataset_name = dataset_name
         dataset = datasets[0]()
         dataset.set_custom_transforms(dataset_transforms)
         self.train_transforms = dataset.train_transforms  # FIXME handle multiple datasets
@@ -217,6 +217,7 @@ class IncrementalDataset:
         :param data_source: Whether to fetch from the train, val, or test set.
         :return: The raw data and a loader.
         """
+        logger.info(f'Force batchsize = [{force_batchsize}]')
         if not isinstance(class_indexes, list):  # TODO: deprecated, should always give a list
             class_indexes = [class_indexes]
 
@@ -274,7 +275,7 @@ class IncrementalDataset:
             )
         return data, self._get_loader(
             data, targets, memory_flags, shuffle=False, mode=mode, sampler=sampler, sampler_ddp_type=False,
-            transform_args=transform_args, force_transform=force_transform,
+            transform_args=transform_args, force_transform=force_transform, force_batchsize=force_batchsize
         )
 
     def get_memory_loader(self, data, targets, distributed=False, repeated_aug=False, trans_args=None):
@@ -386,7 +387,7 @@ class IncrementalDataset:
 
             x_train, y_train = train_dataset.data, np.array(train_dataset.targets)
             x_val, y_val, x_train, y_train = self._split_per_class(
-                x_train, y_train, validation_split
+                x_train, y_train, validation_split, shuffle=validation_split > 0
             )
             x_test, y_test = test_dataset.data, np.array(test_dataset.targets)
 
@@ -462,14 +463,15 @@ class IncrementalDataset:
         return np.array(list(map(lambda x: order.index(x), y)))
 
     @staticmethod
-    def _split_per_class(x, y, validation_split=0.):
+    def _split_per_class(x, y, validation_split=0., shuffle=False):
         """Splits train data for a subset of validation data.
 
         Split is done so that each class has a much data.
         """
-        shuffled_indexes = np.random.permutation(x.shape[0])
-        x = x[shuffled_indexes]
-        y = y[shuffled_indexes]
+        if shuffle:
+            shuffled_indexes = np.random.permutation(x.shape[0])
+            x = x[shuffled_indexes]
+            y = y[shuffled_indexes]
 
         x_val, y_val = [], []
         x_train, y_train = [], []
@@ -532,19 +534,11 @@ def _get_dataset(dataset_name):
         return ImageNet100
     elif dataset_name == "imagenetr":
         return ImageNetR
-    elif dataset_name == "imagenet100ucir":
-        return ImageNet100UCIR
     elif dataset_name == "imagenet1000":
         return ImageNet1000
-    elif dataset_name == "tinyimagenet":
-        return TinyImageNet200
-    elif dataset_name == "awa2":
-        return AwA2
-    elif dataset_name == "cub200":
-        return CUB200
-    elif dataset_name == "apy":
-        return APY
-    elif dataset_name == "lad":
-        return LAD
+    elif dataset_name == 'eurosat_rgb':
+        return EuroSAT_RGB
+    elif dataset_name == 'nwpu_resisc45':
+        return NWPU_RESISC45
     else:
         raise NotImplementedError("Unknown dataset {}.".format(dataset_name))

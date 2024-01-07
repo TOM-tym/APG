@@ -6,7 +6,7 @@ from timm.models.registry import register_model
 from functools import partial
 from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD, IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD
 from timm.models.vision_transformer import _init_vit_weights
-from timm.models.vision_transformer import VisionTransformer
+from timm.models.vision_transformer import VisionTransformer, resize_pos_embed
 from typing import Union
 from collections import OrderedDict
 
@@ -34,7 +34,7 @@ class Mlp(nn.Module):
         x = self.drop1(x)
         x = self.fc2(x)
         x = self.drop2(x)
-        x += res
+        # x += res
         return x
 
 
@@ -477,25 +477,47 @@ def _cfg(url='', **kwargs):
 
 
 @register_model
-def SelfPrompt_tiny(pretrained=False, **kwargs):
-    model = SelfPromptCait(
-        img_size=224, patch_size=16, embed_dim=192, depth=24, num_heads=4, mlp_ratio=4, qkv_bias=True,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6),
-        init_scale=1e-5,
-        depth_token_only=2, **kwargs)
-
+def SelfPromptDeit_mybase(pretrained=False, extra_token_nums=2, immediate_layer=9, pretrained_path=None, **kwargs):
+    logger.info(f'using SelfPromptDeit_mybase, pretrain=[{pretrained}], path=[{pretrained_path}]')
+    model = SelfPromptDeit(
+        extra_token_nums=extra_token_nums, immediate_layer=immediate_layer,
+        patch_size=16, embed_dim=768, depth=12, num_heads=12, mlp_ratio=4, qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     model.default_cfg = _cfg()
     if pretrained:
-        checkpoint = torch.hub.load_state_dict_from_url(
-            url="https://dl.fbaipublicfiles.com/deit/XXS24_224.pth",
-            map_location="cpu", check_hash=True
-        )
-        checkpoint_no_module = {}
-        for k in model.state_dict().keys():
-            checkpoint_no_module[k] = checkpoint["model"]['module.' + k]
+        if pretrained_path is None:
+            checkpoint = torch.hub.load_state_dict_from_url(
+                url="https://dl.fbaipublicfiles.com/deit/deit_small_patch16_224-cd65a155.pth",
+                map_location="cpu", check_hash=True
+            )
+        elif '.npz' in pretrained_path:
+            model.load_pretrained(pretrained_path)
+        elif 'miil' in pretrained_path:
+            checkpoint = torch.load(pretrained_path, 'cpu')
+            err = model.load_state_dict(checkpoint, strict=False)
+            logger.warning(err)
+        elif 'tinyImageNet' in pretrained_path:
+            checkpoint = torch.load(pretrained_path, 'cpu')['model_state_dict']
+            new_pos_embed = checkpoint['pos_embed']
+            new_pos_embed_1 = new_pos_embed[:, 0, :].unsqueeze(1)
+            new_pos_embed_2 = new_pos_embed[:, 2:, :]
+            new_pos_embed = torch.cat((new_pos_embed_1, new_pos_embed_2), dim=1)
+            current_pos_embed = model.pos_embed
+            resized_pos_embed = resize_pos_embed(new_pos_embed, current_pos_embed,
+                                                 getattr(model, 'num_prefix_tokens', 1),
+                                                 model.patch_embed.grid_size)
+            logger.info(f'resized_pos_embed:{resized_pos_embed.shape}')
+            checkpoint['pos_embed'] = resized_pos_embed
+            checkpoint.pop('head.bias')
+            checkpoint.pop('head.weight')
+            err = model.load_state_dict(checkpoint, strict=False)
+            logger.warning(err)
+        else:
+            checkpoint = torch.load(pretrained_path, 'cpu')
+            err = model.load_state_dict(checkpoint["model"], strict=False)
+            logger.warning(err)
 
-        model.load_state_dict(checkpoint_no_module)
-
+    model.default_cfg = _cfg()
     return model
 
 
@@ -525,18 +547,6 @@ def SelfPromptDeit_mytiny(pretrained=False, extra_token_nums=2, immediate_layer=
                            immediate_layer=immediate_layer,
                            patch_size=16, embed_dim=256, depth=12, num_heads=8, mlp_ratio=4, qkv_bias=True,
                            norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
-
-    model.default_cfg = _cfg()
-    return model
-
-
-@register_model
-def SelfPromptCait_tiny(pretrained=False, **kwargs):
-    model = SelfPromptCait(
-        img_size=224, patch_size=16, embed_dim=192, depth=24, num_heads=4, mlp_ratio=4, qkv_bias=True,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6),
-        init_scale=1e-5,
-        depth_token_only=2, **kwargs)
 
     model.default_cfg = _cfg()
     return model

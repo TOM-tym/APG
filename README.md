@@ -1,9 +1,7 @@
 # When Prompt-based Incremental Learning Does Not Meet Strong Pretraining (ICCV2023)
 
 Official PyTorch implementation of our ICCV2023 paper “When Prompt-based Incremental Learning Does Not Meet Strong
-Pretraining”[[paper]]()
-
-Codes will be released soon.
+Pretraining”[[paper]](https://arxiv.org/abs/2308.10445)
 
 ## Environments
 
@@ -15,31 +13,36 @@ Codes will be released soon.
 
 ### Download Datasets
 
-- CIFAR100 dataset will be downloaded automatically to `data_path` specified
-  in `CIFAR100/options/data/cifar100_3orders.yaml`.
+- **CIFAR100** dataset will be downloaded automatically to the directory specified by `--data-path`.
 
-- ImageNet100 dataset cannot be downloaded automatically, please download it
+- **ImageNet100** dataset cannot be downloaded automatically, please download it
   from [image-net.org](https://image-net.org/download.php).
-  Place the dataset in `data_path` specified in `ImageNet/options/data/imagenet100_1order.yaml`.
+  Place the dataset the directory specified by `--data-path`.
 
-- ImageNet-R, EuroSAT and RESISC45 datasets: TODO
+  In order to conduct incremental training, we also need to put imagenet split file `train_100.txt`, `val_100.txt` into
+  the data path. Symbolic link is recommended:
+  ```
+  ln -s ImageNet/imagenet_split/train_100.txt data_path/imagenet/train_100.txt
+  ln -s ImageNet/imagenet_split/val_100.txt data_path/imagenet/val_100.txt
+  ```
+ 
+- **ImageNet-R** is from[The Many Faces of Robustness](https://github.com/hendrycks/imagenet-r?tab=readme-ov-file). 
+  Since the official dataset didn't provide the train/test split, you can use our split in the [datalink](https://drive.google.com/drive/folders/18GdcsKIxx2MdbdjjblHXE3nqXXgjIiew?usp=drive_link).
+  Place the dataset the directory specified by `--data-path`.
+  
+- **EuroSAT** is from the official github [repo](https://github.com/phelber/EuroSAT), you can use the version in the [datalink](https://drive.google.com/drive/folders/18GdcsKIxx2MdbdjjblHXE3nqXXgjIiew?usp=drive_link) for convenience.
+  Place the dataset the directory specified by `--data-path`.
 
-In order to conduct incremental training, we also need to put imagenet split file `train_100.txt`, `val_100.txt` into
-the data path. Symbolic link is recommended:
-
-```
-ln -s ImageNet/imagenet_split/train_100.txt data_path/imagenet1k/train_100.txt
-ln -s ImageNet/imagenet_split/val_100.txt data_path/imagenet1k/val_100.txt
-```
+- **RESISC45** is from the paper ([url](https://arxiv.org/abs/1703.00121)), you can use the version in the [datalink](https://drive.google.com/drive/folders/18GdcsKIxx2MdbdjjblHXE3nqXXgjIiew?usp=drive_link). Place the dataset the directory specified by `--data-path`.
 
 ### Path structure
 
 After downloading, the dataset should be organized like this
 
 ```
-data_path
+datasets
 │  
-│──imagenet1k
+│──imagenet
 │   │
 │   └───train
 │       │   n01440764
@@ -54,7 +57,14 @@ data_path
 │   │ train_100.txt
 │   │ train_900.txt
 │   │ val_100.txt 
-│   
+│
+│──cifar-100-python
+│ 
+│──my-imagenet-r 
+│ 
+│──my-EuroSAT_RGB
+│ 
+│──my-NWPU-RESISC45
 └
 ```
 
@@ -62,6 +72,7 @@ data_path
 
 ### Non-pretrained incremental learning
 
+#### ImageNet-100
 This setting is the default setting of class-incremental learning.
 In this setting, the network is trained from scratch.
 
@@ -71,13 +82,13 @@ Download weights from the following
 folder.
 
 - Step 2:
-To reproduce the results of our method in Table 1 & 2:
+  To reproduce the results of our method in Table 1 & 2:
 
-```
-runs/non_pretrained/run_nonPretrained_imageNetSub_B50_T10.sh
-```
+  ```
+  bash runs/non_pretrained/run_nonPretrained_imageNetSub_B50_T10.sh
+  ```
 
-### Notes:
+##### Notes for step1:
 Since this setting is not using any pretrained weights, we treat the first task as the pretraining tasks.
 For ViT we use, it is difficult to train the model from scratch to match the first-task performance as the CNN (ResNets)
 . 
@@ -90,23 +101,97 @@ For simplicity, we provide the trained ViT weights on the first task which can b
 Running the script above will load such weights.
 If you want to train the ViT on the first task, you can run
 ```
-runs/non_pretrained/run_nonPretrained_imageNetSub_B50_teacher.sh
+bash runs/non_pretrained/imagnet_pretrain/run_nonPretrained_imageNetSub_B50_teacher.sh
 ```
-After training, please put the checkpoint on the chkpts folder and modify the path in the script above.
+After training, please put the checkpoint on the chkpts folder and modify the path in the script above (line28).
 
+#### CIFAR100
+
+- Step 1:
+Download weights from the following
+[link](https://drive.google.com/drive/folders/1DRpbNpkJ2lwIPtO_PF-mFV_kKIYKeHgt?usp=drive_link) and put them in 'chkpts'
+folder.
+
+- Step 2:
+  To reproduce the results of our method in Table 3:
+
+  ```
+  bash runs/non_pretrained/run_nonPretrained_cifar100_B50_T10.sh
+  ```
+##### Notes for step1:
+Like the Imagenet, here is the script for training the first stage.
+  ```
+  runs/non_pretrained/cifar_pretrain/run_nonPretrained_CIFAR100_B50_teacher.sh
+  ```
 
 ### Pretrained incremental learning
-
 In order to compare our method with other prompt-based methods, we also conduct experiments with pretrained weights
 (ImageNet21k & TinyImageNet pretrained).
+#### Download the pretrained checkpoints
+Download weights from the following
+[link](https://drive.google.com/drive/folders/1DRpbNpkJ2lwIPtO_PF-mFV_kKIYKeHgt?usp=drive_link) and put them in 'chkpts'
+folder.
+We use the pretrained-weight(deit_base_patch16_224-b5f2ef4d.pth) from the Deit [repo](https://github.com/facebookresearch/deit).
+We use the tiny-ImageNet weight from this [repo](https://github.com/ehuynh1106/TinyImageNet-Transformers).
+#### ImageNet-R
+- To reproduce the results of our method in Table 5:
+  
+  (ImageNet-pretrained)
+  ```
+  bash runs/pretrained/ImageNetR_pretrained_vitbase_T10.sh
+  ```
+- To reproduce the results of our method with tiny-imagenet pretrained in Table A4 (in the Appendix):
+  
+  (tinyImageNet-pretrained)
+  ```
+  bash runs/pretrained/ImageNetR_tinyImageNet_pretrained_vitbase_T10.sh
+  ```
+ 
+#### CIFAR100
 
-(TODO)
+- To reproduce the results of our method in Table 4:
 
+  (ImageNet-pretrained)
+  ```
+  bash runs/pretrained/CIFAR100_pretrained_vitbase_T10.sh
+  ```
+- To reproduce the results of our method with tiny-imagenet pretrained in Table 4 (in the Appendix):
+
+  (tinyImageNet-pretrained)
+  ```
+  bash runs/pretrained/CIFAR100_tinyImageNet_pretrained_vitbase_T10.sh
+  ```
+
+#### EuroSAT and RESISC45
+- To reproduce the results of our method with ImageNet pretrained in Table A2 (in the Appendix):
+
+  (EuroSAT_RGB)
+  ```
+  bash runs/pretrained/EuroSAT_RGB_pretrained_T5.sh
+  ```
+  
+  (NWPU-RESISC45)
+  ```
+  bash runs/pretrained/NWPU-RESISC45_pretrained_T10.sh
+  ```
+  
+- Further, with tiny-imagenet pretrained:
+
+  (EuroSAT_RGB)
+  ```
+  bash runs/pretrained/EuroSAT_RGB_tinyImageNet_pretrained_T5.sh
+  ```
+  
+  (NWPU-RESISC45)
+  ```
+  bash runs/pretrained/NWPU-RESISC45_tinyImageNet_pretrained_T10.sh
+  ```
+  
 ## Todo list
 
--[ ] Non-pretrained incremental learning on CIFAR100
--[ ] Pretrained incremental learning on ImageNetR
--[ ] Pretrained incremental learning on EuroSAT and RESISC45
+-[X] Non-pretrained incremental learning on CIFAR100
+-[X] Pretrained incremental learning on ImageNetR
+-[X] Pretrained incremental learning on EuroSAT and RESISC45
 
 ## Acknowledgement
 
@@ -125,13 +210,3 @@ In order to compare our method with other prompt-based methods, we also conduct 
   year={2023}
 }
 ```
-
-## Notes
-
-- This is a project for over one year and it is maintained by myself alone, and I am trying my best to clean up the codes. 
-So please understand and forgive me for the delay in releasing the code. (If you find and bugs, please let me know :D)
-- At the moment, the codes for non-pretrained incremental learning is not released yet. However, if you're in hurry to
-  reimplement this part, you can replace the pretrianed weight and use the incremental config like
-  `options/continual_trans/non_pretrained/imagenet_sub/imagenet100_nonPretrained_incremental.yaml` (the hyper-parameters
-  may not be the optimal ones)
-- The full code may be released in the middle of November, maybe after the CVPR deadline. (Sorry for the delay again)

@@ -1,13 +1,13 @@
-dataset: imagenet100
+dataset: CIFAR100
 
 model: continual_trans
 backbones: SelfPromptDeit_mytiny
 immediate_layer: 9
-frozen_layer: 9
+frozen_layer: 11
 reset_deep_layers: True
 force_reset_deep_layers: False
 testing_interval: 10
-batch_size: 256
+batch_size: 128
 
 eval_type: cnn
 memory_size: 0

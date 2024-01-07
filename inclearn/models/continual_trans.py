@@ -223,7 +223,7 @@ class ContinualTrans(IncrementalLearner):
             self.finetune_APG_optimizer = None
             self.finetune_APG_scheduler = None
 
-        # pretrain
+        # teacher_pretrain
         self.pretrain_config = args.get('pretrain_config', {})
         if not len(self.pretrain_config):
             self.pretrain_optimizer = None
@@ -277,7 +277,7 @@ class ContinualTrans(IncrementalLearner):
                 f
             )
 
-    def save_parameters(self, results_folder, run_id, epoch=-1, train_type='APG', end='False', prefix=''):
+    def save_parameters(self, results_folder, run_id, epoch=-1, train_type='APG', end=False, prefix=''):
         if utils.is_main_process():
             path = os.path.join(results_folder, f"{prefix}net_{run_id}_task_{self._task}.pth")
             logger.info(f"Saving model at {path}.")
@@ -313,9 +313,10 @@ class ContinualTrans(IncrementalLearner):
                     f'\t| Task ID         | \t {task_id}\n'
                     f'\t| End of task?    | \t {end}\n'
                     f'\t| training type   | \t {train_type}')
-        if end:
+        if (isinstance(end, str) and end.lower() == 'True') or (isinstance(end, bool) and end):
             logger.info(f"The checkpoint is saved after a full stage, will start a new stage {task_id + 1}")
             resume_from_epoch = None
+            train_type = 'APG'
         else:
             logger.info(f"The checkpoint is saved in the middle of a training stage,"
                         f" will resume from epoch {epoch + 1} of stage {task_id}")
@@ -327,11 +328,10 @@ class ContinualTrans(IncrementalLearner):
         backbone_state_dict.pop('backbone.pos_embed_new')
         self.load_state_dict_force(self._network, backbone_state_dict)
 
-        # load APG
-        logger.info('loading APG')
-        APG_state_dict = load_content['APG']
-
-        if not force_from_stage0:
+        if train_type.lower() == 'apg' and not force_from_stage0:
+            # load APG
+            logger.info('loading APG')
+            APG_state_dict = load_content['APG']
             self.load_state_dict_force(self.adaptive_prompt_generator, APG_state_dict)
 
         return resume_from_epoch, train_type
@@ -461,7 +461,7 @@ class ContinualTrans(IncrementalLearner):
         self.center_library.update(
             # self.build_center_library(inc_dataset, extract_distributed=True, use_apg=self._task > 0))
             self.build_center_library(inc_dataset, extract_distributed=True, use_apg=True))
-        self.build_center_lib_loader(self._task, self._base_task_size, self._task_size)
+        self.build_center_lib_loader(self._task, self._base_task_size, self._task_size, inc_dataset.dataset_name)
 
     def _after_task(self, inc_dataset):
         self._old_model = self._network.copy().freeze().to(self._device)
@@ -689,7 +689,7 @@ class ContinualTrans(IncrementalLearner):
 
         """
         if pretrain:
-            train_type = 'pretrain'
+            train_type = 'teacher_pretrain'
         elif finetune:
             train_type = 'finetune'
         else:
@@ -848,6 +848,9 @@ class ContinualTrans(IncrementalLearner):
                                                                       find_unused_parameters=True)
         else:
             ddp_model_APG = None
+        # tmp_chkpt = torch.load('results/dev/continual_trans/202312/week_1/20231206_res_nonPretrained_imageNetSub_B50_T10_teacher/resume/net_0_task_0.pth','cpu')
+        # tmp_chkpt = torch.load('results/dev/continual_trans/202312/week_2/20231209_res_nonPretrained_CIFAR100_B50_T10_teacher_2/net_0_task_0.pth','cpu')
+        # self._network.load_state_dict(tmp_chkpt['backbone_fc'])
         ddp_model_backbone = torch.nn.parallel.DistributedDataParallel(self._network, find_unused_parameters=True)
 
         loss_scaler = MyScaler()
@@ -905,10 +908,10 @@ class ContinualTrans(IncrementalLearner):
             elif pretrain:
                 assert task_id == 0
                 ddp_model_backbone.train()
-                # train_stats = train_one_epoch_pretrain(ddp_model_backbone, train_loader, optimizer, self._device, epoch,
-                #                                        loss_scaler, self.clip_grad, mixup_fn=mixup_fn,
-                #                                        teacher_model=self.teacher_network)
-                train_stats = {}
+                train_stats = train_one_epoch_pretrain(ddp_model_backbone, train_loader, optimizer, self._device, epoch,
+                                                       loss_scaler, self.clip_grad, mixup_fn=mixup_fn,
+                                                       teacher_model=self.teacher_network)
+                # train_stats = {}
             else:
                 self.adaptive_prompt_generator.train()
                 ddp_model_APG.train()
@@ -985,12 +988,13 @@ class ContinualTrans(IncrementalLearner):
         if isinstance(APG_model, torch.nn.parallel.DistributedDataParallel):
             APG_model = APG_model.module
         if APG:
-            test_stats = evaluate(val_loader, model, self._device, APG=APG_model)
+            test_stats = evaluate(val_loader, model, self._device, APG=APG_model, task_size=self._task_size)
             logger.info(f'Test with APG--------------------------------------------')
             logger.info(
                 f"Accuracy of the network on the {len(val_loader.dataset)} test images: {test_stats['acc1']:.1f}%")
         logger.info(f'Test without APG---------------------------------------')
-        test_stats = evaluate(val_loader, model, self._device, APG=None, output_key=output_key)
+        test_stats = evaluate(val_loader, model, self._device, APG=None, output_key=output_key,
+                              task_size=self._task_size)
         logger.info(
             f"Accuracy of the network on the {len(val_loader.dataset)} test images: {test_stats['acc1']:.1f}%")
         if model is not None:
@@ -998,11 +1002,8 @@ class ContinualTrans(IncrementalLearner):
         if APG_model is not None:
             APG_model.train()
 
-    def build_center_lib_loader(self, task, base_task_size, task_size):
-        all_centroid = torch.tensor([])
-        # all_prompts = torch.tensor([])
+    def build_center_lib_loader(self, task, base_task_size, task_size, dataset_name):
         all_prompts = {}
-        all_feat = torch.tensor([])
         all_target = torch.tensor([])
         cls_dist_immediate = {}
         cls_dist_feat = {}
@@ -1014,47 +1015,31 @@ class ContinualTrans(IncrementalLearner):
             augmented_feat_mean = content['augmented_feat_mean']
             augmented_feat_cov = content['augmented_feat_cov']
             centroid_conv = content['centroid_cov']
-            # centroid_conv = torch.eye(384)
-
-            # prompts = content['prompts']
-            # if task == 0:
-            #     prompts_mean = content['feat_mean_prompts']
-            # else:
-            #     prompts_mean = content['prompts_mean']
             prompts_mean = content['prompts_mean']
-            prompts_cov = content['prompts_cov']
             feat_mean = content['feat_mean']
-            # feat_cov = torch.from_numpy(content['feat_cov'])
             feat_cov = content['feat_cov']
-            # feat_cov = torch.eye(feat_cov.shape[1])
-            tmp = torch.ones(centroid_conv.shape[0]) * 1e-6
-            # feat_cov = feat_cov.mul(torch.eye(feat_cov.shape[0], dtype=torch.bool))
-            # a = torch.eye(feat_mean.shape[0]) * 1e-5
-            # distribution_immediate = MultivariateNormal(loc=centroid_mean, covariance_matrix=a)
-            # distribution_feat = MultivariateNormal(loc=feat_mean, covariance_matrix=a)
-
+            tmp = torch.eye(centroid_conv.shape[
+                                0]) * 1e-5 if dataset_name.lower() == 'imagenetr' or dataset_name.lower() == 'cifar100' else torch.ones(
+                centroid_conv.shape[0]) * 1e-6
             distribution_immediate = MultivariateNormal(loc=centroid_mean, covariance_matrix=centroid_conv + tmp)
+
             distribution_feat = MultivariateNormal(loc=feat_mean, covariance_matrix=feat_cov + tmp)
             distribution_augmented_feat = MultivariateNormal(loc=augmented_feat_mean,
                                                              covariance_matrix=augmented_feat_cov + tmp)
-            # distribution_prompts = MultivariateNormal(loc=prompts_mean, covariance_matrix=prompts_cov+tmp)
             all_prompts[cls] = prompts_mean
             cls_dist_immediate[cls] = distribution_immediate
             cls_dist_feat[cls] = distribution_feat
             cls_feat_mean[cls] = feat_mean
             cls_dist_augmented_feat[cls] = distribution_augmented_feat
-            # cls_all_augmented_feat[cls] = content['augmented_feat_all']
-            # all_centroid = torch.cat((all_centroid, torch.from_numpy(centroid_mean).unsqueeze(0)))
-            # all_prompts = torch.cat((all_prompts, prompts)).detach()
-            # all_feat = torch.cat((all_feat, feat.unsqueeze(0)))
+
             target = torch.tensor([cls]).long()
             all_target = torch.cat((all_target, target))
         new_classes = [i for i in range(base_task_size + (task - 1) * task_size, base_task_size + task * task_size)] \
             if task > 0 else [i for i in range(base_task_size)]
         all_target = all_target.long()
         dataset = TensorAugDataset(cls_dist_immediate, cls_dist_feat, cls_dist_augmented_feat, cls_all_augmented_feat,
-                                   cls_feat_mean, all_target, all_prompts, n=self.center_lib_n, new_classes=new_classes)
-        # dataset = torch.utils.data.TensorDataset(all_centroid, all_prompts, all_feat, all_target)
+                                   cls_feat_mean, all_target, all_prompts, dataset_name, n=self.center_lib_n,
+                                   new_classes=new_classes, )
         num_tasks = utils.get_world_size()
         batchsize = self.args.get("batch_size_center_lib", 128)
         logger.info(f'Center lib batchsize {batchsize}')

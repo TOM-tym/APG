@@ -274,37 +274,41 @@ def _train_task(config, model, train_loader, val_loader, test_loader, run_id, ta
     if config["resume"] is not None and checkpoints_existence and not (config["resume_first"] and task_id > 0):
         force_from_stage0 = config.get("force_from_stage0", False)
         resume_from_epoch, current_type = model.load_parameters(config["resume"], run_id, force_from_stage0)
-        model.network.backbone.set_backbone_frozen(num_layer=model.frozen_layer)
-        logger.info(f'Set transformer block frozen until block [{model.frozen_layer}]')
-        logger.info(
-            f'{pprint.pformat({i[0]: i[1].requires_grad for i in model.network.backbone.blocks.named_parameters()}, sort_dicts=False)}')
-        model.adaptive_prompt_generator.train()
-
-        if force_from_stage0:
-            model.network.classifier.disable_mlp_fc()
-            logger.info(f'force_from_stage0!')
-            model.network.backbone.pos_embed_new = torch.nn.Parameter(
-                torch.zeros(1, model.network.backbone.patch_embed.num_patches + 2,
-                            model.network.backbone.embed_dim).cuda())
-            logger.info(f'reset classifier weight!')
-            model.reset_fc()
-            model.train_APG(train_loader, val_loader if val_loader else test_loader, run_id=run_id, stage0=True,
+        if current_type.lower() == 'teacher_pretrain':  # training again, used in cifar
+            model.train()
+            model.train_APG(train_loader, val_loader if val_loader else test_loader, run_id=run_id, pretrain=True,
                             task_id=task_id)
-            resume_from_chkpt = False
-        else:
-            if model.network.classifier.pre_MLP:
-                model.network.classifier.enable_mlp_fc()
-            if resume_from_epoch is not None and not next_task_checkpoints_existence:
-                # if False:
-                logger.info(f'Resume From Epoch {resume_from_epoch}')
-                logger.info("Train on {}->{}.".format(task_info["min_class"], task_info["max_class"]))
-                model.train_APG(train_loader, val_loader if val_loader else test_loader, run_id=run_id,
-                                resume_from_epoch=resume_from_epoch, stage0=False, task_id=task_id,
-                                finetune=current_type == 'finetune')
+        else:  # training APG
+            model.network.backbone.set_backbone_frozen(num_layer=model.frozen_layer)
+            logger.info(f'Set transformer block frozen until block [{model.frozen_layer}]')
+            logger.info(
+                f'{pprint.pformat({i[0]: i[1].requires_grad for i in model.network.backbone.blocks.named_parameters()}, sort_dicts=False)}')
+            model.adaptive_prompt_generator.train()
+
+            if force_from_stage0:
+                model.network.classifier.disable_mlp_fc()
+                logger.info(f'force_from_stage0!')
+                model.network.backbone.pos_embed_new = torch.nn.Parameter(
+                    torch.zeros(1, model.network.backbone.patch_embed.num_patches + 2,
+                                model.network.backbone.embed_dim).cuda())
+
+                logger.info(f'reset classifier weight!')
+                model.reset_fc()
+                model.train_APG(train_loader, val_loader if val_loader else test_loader, run_id=run_id, stage0=True,
+                                task_id=task_id)
                 resume_from_chkpt = False
             else:
-                logger.info("Skipping training phase {} because reloading pretrained model.".format(task_id))
-                resume_from_chkpt = True
+                if resume_from_epoch is not None and not next_task_checkpoints_existence:
+                    # if False:
+                    logger.info(f'Resume From Epoch {resume_from_epoch}')
+                    logger.info("Train on {}->{}.".format(task_info["min_class"], task_info["max_class"]))
+                    model.train_APG(train_loader, val_loader if val_loader else test_loader, run_id=run_id,
+                                    resume_from_epoch=resume_from_epoch, stage0=False, task_id=task_id,
+                                    finetune=current_type == 'finetune')
+                    resume_from_chkpt = False
+                else:
+                    logger.info("Skipping training phase {} because reloading pretrained model.".format(task_id))
+                    resume_from_chkpt = True
 
     elif config["resume"] is not None and os.path.isfile(config["resume"]) and \
             os.path.exists(config["resume"]) and task_id == 0:
@@ -317,7 +321,8 @@ def _train_task(config, model, train_loader, val_loader, test_loader, run_id, ta
         resume_from_chkpt = True
     else:
         logger.info("Train on {}->{}.".format(task_info["min_class"], task_info["max_class"]))
-        if task_id == 0:
+        pretrain_flag = config.get('not_need_pretrain', True)
+        if task_id == 0 and not pretrain_flag:
             model.train()
             model.train_APG(train_loader, val_loader if val_loader else test_loader, run_id=run_id, pretrain=True,
                             task_id=task_id)

@@ -37,7 +37,10 @@ def get_backbone(backbone_type, all_args, **kwargs):
                             drop_path_rate=all_args['drop_path'], drop_block_rate=None)
 
     elif 'SelfPrompt' in backbone_type:
-        return create_model(backbone_type, pretrained=False, num_classes=0, drop_rate=all_args['drop'],
+        pretrained = all_args.get('first_pretrain', False)
+        pretrained_path = all_args.get('pretrain_path', None)
+        return create_model(backbone_type, pretrained=pretrained, pretrained_path=pretrained_path, num_classes=0,
+                            drop_rate=all_args['drop'],
                             extra_token_nums=all_args.get('prompt_config', {}).get('more_prompts', 1) + 1,
                             drop_path_rate=all_args['drop_path'], drop_block_rate=None,
                             immediate_layer=all_args['immediate_layer'],

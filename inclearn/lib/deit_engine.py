@@ -46,7 +46,8 @@ class Mycontex(object):
 def train_one_epoch_pretrain(model: torch.nn.Module,  # ddp for classifier
                              data_loader: Iterable,
                              optimizer: torch.optim.Optimizer,
-                             device: torch.device, epoch: int,
+                             device: torch.device,
+                             epoch: int,
                              loss_scaler: utils.MyScaler,
                              max_norm: float = 0,
                              mixup_fn: Optional[Mixup] = None,
@@ -60,6 +61,8 @@ def train_one_epoch_pretrain(model: torch.nn.Module,  # ddp for classifier
 
     itx = 0
     is_second_order = hasattr(optimizer, 'is_second_order') and optimizer.is_second_order
+    criterion = SoftTargetCrossEntropy()
+
     for data in metric_logger.log_every(data_loader, print_freq, header):
         itx += 1
         samples = data['inputs']
@@ -83,9 +86,10 @@ def train_one_epoch_pretrain(model: torch.nn.Module,  # ddp for classifier
                     outputs_teacher = teacher_model(samples)
                     teacher_output_logits = outputs_teacher['logits']
                 _tea_dis_loss += teacher_distillation_loss(outputs, teacher_output_logits * 3) * 70
-                # loss_new_ce = criterion(outputs, targets)
+            loss_new_ce = criterion(outputs, targets)
 
-            loss = _tea_dis_loss
+            # loss = _tea_dis_loss
+            loss = loss_new_ce
 
         loss_value = loss.item()
 
@@ -221,6 +225,12 @@ def train_one_epoch_adaptive_prompt_generator(model: torch.nn.Module,  # ddp for
                         prompts_attn_const = criterion2(prompts_attn_new / attnConst_hard_tau,
                                                         prompts_constraint_target)
                         assert prompt_per_cls == 1, 'Hard_ce should be with prompt_per_clas == 1.'
+                    elif attn_type == 'KLDivTripletWithHardCe':
+                        prompts_constraint_target = origin_t.expand(H * max(1, int(N / N2)), -1).T.reshape(N * H)
+                        prompts_attn_const1 = criterion2(prompts_attn_new / attnConst_hard_tau,
+                                                         prompts_constraint_target)
+                        prompts_attn_const2 = soft_triplet_withKL(prompts_attn_new.float(), prompts_constraint_target)
+                        prompts_attn_const = prompts_attn_const1 + prompts_attn_const2
                     else:
                         assert False, f'got attn_type: [{attn_type}]'
                 else:

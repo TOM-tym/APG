@@ -14,7 +14,7 @@ memory_size: 0
 FC_MLP: False
 FC_MLP_num: 0
 fc_proxy_per_class: 10
-cross_attn_wo_x: True
+cross_attn_wo_x: False
 APG_residual: False
 
 groupwise_factors:

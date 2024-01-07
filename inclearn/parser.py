@@ -12,8 +12,6 @@ def get_parser():
                         help="Incremental learner to train.")
     parser.add_argument("-c", "--backbones", default="rebuffi", type=str,
                         help="Backbone backbones.")
-    parser.add_argument("--trans_model", default="deit_tiny_patch16_224", type=str,
-                        help="Transformer Backbone Type.")
     parser.add_argument("--dropout", default=0., type=float,
                         help="Dropout value.")
     parser.add_argument("-he", "--herding", default=None, type=str,
@@ -34,11 +32,6 @@ def get_parser():
     parser.add_argument('--drop-path', type=float, default=0.1, metavar='PCT',
                         help='Drop path rate (default: 0.1)')
 
-    parser.add_argument('--model-ema', action='store_true')
-    parser.add_argument('--no-model-ema', action='store_false', dest='model_ema')
-    parser.set_defaults(model_ema=True)
-    parser.add_argument('--model-ema-decay', type=float, default=0.99996, help='')
-    parser.add_argument('--model-ema-force-cpu', action='store_true', default=False, help='')
     parser.add_argument('--immediate_layer', default=9, type=int, help='layers to output for APG, '
                                                                        'and shadow layers will be frozen')
 
@@ -67,7 +60,7 @@ def get_parser():
                         help="Initial increment, may be bigger.")
     parser.add_argument("-sampler", "--sampler",
                         help="Elements sampler.")
-    parser.add_argument("--data-path", default="/data/douillard/", type=str)
+    parser.add_argument("--data-path", default="./datasets", type=str)
 
     # Training related:
     parser.add_argument('--sched', default='cosine', type=str, metavar='SCHEDULER',
@@ -182,13 +175,14 @@ def get_parser():
                         help='How to apply mixup/cutmix params. Per "batch", "pair", or "elem"')
 
     # Distillation parameters
-    parser.add_argument('--teacher-model', default='regnety_160', type=str, metavar='MODEL',
-                        help='Name of teacher model to train (default: "regnety_160"')
+    parser.add_argument('--teacher-model', default='', type=str, metavar='MODEL',
+                        help='Name of teacher model to train')
     parser.add_argument('--teacher-path', type=str, default='')
     parser.add_argument('--distillation-type', default='none', choices=['none', 'soft', 'hard'], type=str, help="")
     parser.add_argument('--distillation-alpha', default=0.5, type=float, help="")
     parser.add_argument('--distillation-tau', default=1.0, type=float, help="")
 
+    parser.add_argument('--not_need_pretrain', type=bool, default=False, help="")
     # * Finetuning params
     parser.add_argument('--finetune', default='', help='finetune from checkpoint')
 

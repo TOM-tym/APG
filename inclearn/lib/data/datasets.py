@@ -156,6 +156,56 @@ class ImageNetR(ImageNet100):
 
         return self
 
+class EuroSAT_RGB(ImageNet100):
+    imagenet_size = 10
+    def base_dataset(self, data_path, train=True, download=False):
+        logger.info(f'Using EuroSAT_RGB dataset')
+
+        split = "train" if train else "val"
+
+        print("Loading metadata of EuroSAT_RGB_{} ({} split).".format(self.imagenet_size, split))
+        metadata_path = os.path.join(
+            data_path if self.metadata_path is None else self.metadata_path,
+            "{}_EuroSAT_RGB_10.txt".format(split)
+        )
+
+        self.data, self.targets = [], []
+        with open(metadata_path) as f:
+            for line in f:
+                path, target = line.strip().split(" ")
+
+                self.data.append(os.path.join(data_path, path))
+                self.targets.append(int(target))
+
+        self.data = np.array(self.data)
+
+        return self
+
+class NWPU_RESISC45(ImageNet100):
+    imagenet_size = 45
+    def base_dataset(self, data_path, train=True, download=False):
+        logger.info(f'Using NWPU-RESISC45 dataset')
+
+        split = "train" if train else "val"
+
+        print("Loading metadata of NWPU_RESISC45_{} ({} split).".format(self.imagenet_size, split))
+        metadata_path = os.path.join(
+            data_path if self.metadata_path is None else self.metadata_path,
+            "{}_NWPU-RESISC45_10.txt".format(split)
+        )
+
+        self.data, self.targets = [], []
+        with open(metadata_path) as f:
+            for line in f:
+                path, target = line.strip().split(" ")
+
+                self.data.append(os.path.join(data_path, path))
+                self.targets.append(int(target))
+
+        self.data = np.array(self.data)
+
+        return self
+
 class ImageNet100UCIR(ImageNet100):
     suffix = "_ucir"
 

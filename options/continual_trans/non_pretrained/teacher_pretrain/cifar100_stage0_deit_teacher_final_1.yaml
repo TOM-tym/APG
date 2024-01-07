@@ -1,4 +1,4 @@
-dataset: imagenet100
+dataset: cifar100
 
 model: continual_trans
 backbones: SelfPromptDeit_mytiny
@@ -6,7 +6,7 @@ immediate_layer: 9
 batch_size: 128
 
 convnet: resnet18
-teacher_path: /data/yuming220/continual_transformer/incremental_learning.pytorch/chkpt/resnet18/net_0_task_0.pth
+teacher_path: chkpts/teachers/cifar100/net_0_task_0.pth
 convnet_config:
   nf: 64
 cnn_classifier_config:

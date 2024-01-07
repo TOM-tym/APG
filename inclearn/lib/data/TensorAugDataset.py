@@ -3,6 +3,14 @@ from torch.utils.data import Dataset
 from torch.distributions import Distribution
 from typing import Dict
 
+_config_num_samples = {
+    'cifar100': 500,
+    'imagenet100': 1300,
+    'imagenetr': 150,
+    'Eurosat_rgb': 150,
+    'nwpu-resisc45': 150,
+}
+
 
 class TensorAugDataset(Dataset):
 
@@ -13,6 +21,7 @@ class TensorAugDataset(Dataset):
                  feat_mean: Dict[int, torch.Tensor],
                  all_targets,
                  all_prompts,
+                 dataset_name,
                  n=1,
                  new_classes=None):
         self.dist_immediate = dist_immediate
@@ -25,6 +34,7 @@ class TensorAugDataset(Dataset):
         self.n = n
         self.new_classes = new_classes
         self.repeat_new_classes = False
+        self.num_sample_per_class = _config_num_samples[dataset_name.lower()]
         assert len(self.all_prompts) == len(self.all_targets)
         self.num_cls = len(self.all_targets.unique())
 
@@ -36,7 +46,7 @@ class TensorAugDataset(Dataset):
         self.repeat_new_classes = False
 
     def __len__(self):
-        return 1300 * self.num_cls
+        return self.num_sample_per_class * self.num_cls
 
     def __getitem__(self, idx):
         idx = idx % len(self.all_targets)
@@ -76,8 +86,9 @@ class TensorAugDataset(Dataset):
                     dim=0)
                 feat = torch.cat((feat, self.dist_feat[new_cls_idx].sample().to(torch.float32).unsqueeze(0)), dim=0)
                 feat_mean = torch.cat((feat_mean, self.feat_mean[new_cls_idx].unsqueeze(0)), dim=0)
-                feat_aug = torch.cat((feat_aug, self.dist_aug_feat[new_cls_idx].sample().to(torch.float32).unsqueeze(0)),
-                                     dim=0)
+                feat_aug = torch.cat(
+                    (feat_aug, self.dist_aug_feat[new_cls_idx].sample().to(torch.float32).unsqueeze(0)),
+                    dim=0)
         return {"targets": y_out, "feat": feat, "immediate": immediate, 'prompts': prompts, 'feat_mean': feat_mean,
                 'feat_aug': feat_aug, }
         # 'feat_aug_all': feat_aug_all}
