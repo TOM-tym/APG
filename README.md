@@ -89,7 +89,7 @@ folder.
   To reproduce the results of our method in Table 1 & 2:
 
   ```
-  bash runs/non_pretrained/run_nonPretrained_imageNetSub_B50_T10.sh
+  bash runs/non_pretrained/run_nonPretrained_imageNetSub_B50_T10.sh 0,1 10241
   ```
 
 ##### Notes for step1:
@@ -105,7 +105,7 @@ For simplicity, we provide the trained ViT weights on the first task which can b
 Running the script above will load such weights.
 If you want to train the ViT on the first task, you can run
 ```
-bash runs/non_pretrained/imagnet_pretrain/run_nonPretrained_imageNetSub_B50_teacher.sh
+bash runs/non_pretrained/imagnet_pretrain/run_nonPretrained_imageNetSub_B50_teacher.sh 0,1,2,3 10241
 ```
 After training, please put the checkpoint on the chkpts folder and modify the path in the script above (line28).
 
@@ -120,12 +120,12 @@ folder.
   To reproduce the results of our method in Table 3:
 
   ```
-  bash runs/non_pretrained/run_nonPretrained_cifar100_B50_T10.sh
+  bash runs/non_pretrained/run_nonPretrained_cifar100_B50_T10.sh 0,1 10241
   ```
 ##### Notes for step1:
 Like the Imagenet, here is the script for training the first stage.
   ```
-  runs/non_pretrained/cifar_pretrain/run_nonPretrained_CIFAR100_B50_teacher.sh
+  bash runs/non_pretrained/cifar_pretrain/run_nonPretrained_CIFAR100_B50_teacher.sh 0,1,2,3 10241
   ```
 
 ### Pretrained incremental learning
@@ -142,13 +142,13 @@ We use the tiny-ImageNet weight from this [repo](https://github.com/ehuynh1106/T
   
   (ImageNet-pretrained)
   ```
-  bash runs/pretrained/ImageNetR_pretrained_vitbase_T10.sh
+  bash runs/pretrained/ImageNetR_pretrained_vitbase_T10.sh 0,1 10241
   ```
 - To reproduce the results of our method with tiny-imagenet pretrained in Table A4 (in the Appendix):
   
   (tinyImageNet-pretrained)
   ```
-  bash runs/pretrained/ImageNetR_tinyImageNet_pretrained_vitbase_T10.sh
+  bash runs/pretrained/ImageNetR_tinyImageNet_pretrained_vitbase_T10.sh 0,1 10241
   ```
  
 #### CIFAR100
@@ -157,13 +157,13 @@ We use the tiny-ImageNet weight from this [repo](https://github.com/ehuynh1106/T
 
   (ImageNet-pretrained)
   ```
-  bash runs/pretrained/CIFAR100_pretrained_vitbase_T10.sh
+  bash runs/pretrained/CIFAR100_pretrained_vitbase_T10.sh 0,1 10241
   ```
 - To reproduce the results of our method with tiny-imagenet pretrained in Table 4 (in the Appendix):
 
   (tinyImageNet-pretrained)
   ```
-  bash runs/pretrained/CIFAR100_tinyImageNet_pretrained_vitbase_T10.sh
+  bash runs/pretrained/CIFAR100_tinyImageNet_pretrained_vitbase_T10.sh 0,1 10241
   ```
 
 #### EuroSAT and RESISC45
@@ -171,31 +171,34 @@ We use the tiny-ImageNet weight from this [repo](https://github.com/ehuynh1106/T
 
   (EuroSAT_RGB)
   ```
-  bash runs/pretrained/EuroSAT_RGB_pretrained_T5.sh
+  bash runs/pretrained/EuroSAT_RGB_pretrained_T5.sh 0,1 10241
   ```
   
   (NWPU-RESISC45)
   ```
-  bash runs/pretrained/NWPU-RESISC45_pretrained_T10.sh
+  bash runs/pretrained/NWPU-RESISC45_pretrained_T10.sh 0,1 10241
   ```
   
 - Further, with tiny-imagenet pretrained:
 
   (EuroSAT_RGB)
   ```
-  bash runs/pretrained/EuroSAT_RGB_tinyImageNet_pretrained_T5.sh
+  bash runs/pretrained/EuroSAT_RGB_tinyImageNet_pretrained_T5.sh 0,1 10241
   ```
   
   (NWPU-RESISC45)
   ```
-  bash runs/pretrained/NWPU-RESISC45_tinyImageNet_pretrained_T10.sh
+  bash runs/pretrained/NWPU-RESISC45_tinyImageNet_pretrained_T10.sh 0,1 10241
   ```
   
 ## Todo list
 
--[X] Non-pretrained incremental learning on CIFAR100
--[X] Pretrained incremental learning on ImageNetR
--[X] Pretrained incremental learning on EuroSAT and RESISC45
+-[x] Non-pretrained incremental learning on CIFAR100
+
+-[x] Pretrained incremental learning on ImageNetR
+
+-[x] Pretrained incremental learning on EuroSAT and RESISC45
+
 
 ## Acknowledgement
 
